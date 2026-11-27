@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
 import subprocess
+import time
 import wave
 from array import array
 
@@ -152,3 +153,26 @@ def test_writing_is_a_flac_ffmpeg_reads_back(tmp_path):
         wave.open(str(tmp_path / 'v.flac'))
     _rate, _channels, rest = _flac(tmp_path / 'b.flac')
     assert max(abs(x) for x in rest) < 0.001  # the voice was the whole mix
+
+
+# ---------------------------------------------------------------------------
+# ffmpeg the way Haiku runs it: a spawned shell, stderr in a file
+# ---------------------------------------------------------------------------
+
+@needs_ffmpeg
+def test_the_haiku_way_decodes_the_same_and_reports_errors(tmp_path, monkeypatch):
+    video = make_media(tmp_path / 'clip.mkv', 1.0)
+    frames = separate.decode(str(video), tmp_path / 'piped.raw', lambda: False)
+    monkeypatch.setattr(separate, 'HAIKU', True)
+    assert separate.decode(str(video), tmp_path / 'spawned.raw', lambda: False) == frames
+    assert (tmp_path / 'spawned.raw').read_bytes() == (tmp_path / 'piped.raw').read_bytes()
+    (tmp_path / 'not-media.txt').write_text('not media')
+    with pytest.raises(separate.Failed, match='not-media.txt'):
+        separate.decode(str(tmp_path / 'not-media.txt'), tmp_path / 'mix.raw', lambda: False)
+
+
+def test_the_haiku_way_stops_on_cancel(tmp_path):
+    started = time.monotonic()
+    with pytest.raises(engine.Cancelled):
+        separate._ffmpeg_haiku(['sleep', '30'], lambda: True)
+    assert time.monotonic() - started < 5
