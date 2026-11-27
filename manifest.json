@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "id": "deepfilternet",
-  "version": "26.11.1",
+  "version": "26.11.2",
   "display_name": "DeepFilterNet (offline speech cleanup)",
   "summary": "DeepFilterNet2 keeps the voice of a video and takes out background noise as the background, offline, on the CPU, in about a tenth of the time the video plays; cleaner than RNNoise. Small: the 9 MB model is in the add-on. Made for noise, not music: for a voice over music, use HTDemucs.",
   "author": "Subtitld",
