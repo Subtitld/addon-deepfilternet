@@ -1,0 +1,33 @@
+From: Subtitld contributors
+Subject: [PATCH] RNNoise and DeepFilterNet2: run on the session's CPU threads
+
+Their CPU backend was created without a thread count, so ggml used its
+default of four, whatever the session asked for: on a computer with fewer
+cores, four threads spinning at each of RNNoise's 100 graphs a second made it
+some thousand times slower (a 3-core macOS virtual machine took 13 s per
+second of sound). FlashSR, beside them, already sets it.
+
+diff --git a/src/framework/audio/utilities/deepfilternet2.cpp b/src/framework/audio/utilities/deepfilternet2.cpp
+index e77bd7a..83b0de1 100644
+--- a/src/framework/audio/utilities/deepfilternet2.cpp
++++ b/src/framework/audio/utilities/deepfilternet2.cpp
+@@ -1196,6 +1196,7 @@ DeepFilterNet2Model DeepFilterNet2Model::load_from_directory(
+ 
+     auto state = std::make_shared<DeepFilterNet2ModelState>();
+     state->backend.reset(core::init_backend(backend_config));
++    core::set_backend_threads(state->backend.get(), backend_config.threads);
+     state->backend_type = core::backend_type(state->backend.get());
+     state->store = std::make_shared<core::BackendWeightStore>(
+         state->backend.get(),
+diff --git a/src/framework/audio/utilities/rnnoise.cpp b/src/framework/audio/utilities/rnnoise.cpp
+index 2597315..014db88 100644
+--- a/src/framework/audio/utilities/rnnoise.cpp
++++ b/src/framework/audio/utilities/rnnoise.cpp
+@@ -1332,6 +1332,7 @@ RnnoiseModel RnnoiseModel::load_from_safetensors(
+     auto weights = std::make_shared<RnnoiseWeights>();
+     weights->source_path = checkpoint_path;
+     weights->backend.reset(core::init_backend(backend_config));
++    core::set_backend_threads(weights->backend.get(), backend_config.threads);
+     weights->backend_type = core::backend_type(weights->backend.get());
+     weights->store = std::make_shared<core::BackendWeightStore>(
+         weights->backend.get(),

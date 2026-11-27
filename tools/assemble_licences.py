@@ -163,9 +163,12 @@ def assemble(bundle: Path, out: Path) -> list[tuple[str, str, str]]:
     if problems:
         raise SystemExit('FATAL: licences are incomplete:\n  ' + '\n  '.join(problems))
 
+    patches = sorted(p.name for p in (out / 'audiocpp').glob('*.patch'))
     lines = ['# Third-party licences', '',
              'Everything frozen into this add-on, and the notice in this folder that covers it.', '',
-             'audio.cpp is built from its source at the commit `bin/_internal/native.json` names.', '',
+             'audio.cpp is built from its source at the commit `bin/_internal/native.json` names'
+             + (', with these changes of ours: ' + ', '.join(f'[audiocpp/{n}](audiocpp/{n})' for n in patches) + '.'
+                if patches else '.'), '',
              '| File | Component | Notice |', '|------|-----------|--------|']
     lines += [f'| `{relative}` | {component} | [{notice}]({notice}) |' for relative, component, notice in rows]
     (out / 'README.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')

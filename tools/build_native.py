@@ -20,8 +20,10 @@ with only the model family of spec.py compiled in, and collects:
   (spec.BUNDLED_WEIGHTS), those weights, from the same audio.cpp tree.
 - build/licences/audiocpp/: the licences of what the libraries compile in.
 
-audio.cpp is built as it is, with no patch: the add-on runs the model on one
-piece of the sound at a time, and stops between two pieces.
+The patches in tools/patches/ are applied first; they travel with the
+licences, as the record of what was changed. The add-on runs the model on one
+piece of the sound at a time, and stops between two pieces, so audio.cpp's
+offline run needs no change for that.
 
 The model specs are compiled into the library (AUDIOCPP_DEPLOYMENT_BUILD), so
 no data files travel with it. ggml runs on its own thread pool, without
@@ -55,7 +57,8 @@ RUNTIME = ASSETS / 'audiocpp'
 LICENCES = BUILD / 'licences' / 'audiocpp'
 SRC = BUILD / 'audiocpp-src'
 NATIVE_BUILD = BUILD / 'native'
-PATCHES: list[Path] = []
+# Patches of ours to audio.cpp, applied in order: tools/patches/*.patch.
+PATCHES = sorted((ROOT / 'tools' / 'patches').glob('*.patch'))
 sys.path.insert(0, str(ROOT))
 from deepfilternet_addon import spec  # noqa: E402  (the family, and any bundled weights)
 WEIGHTS = ASSETS / 'weights'
