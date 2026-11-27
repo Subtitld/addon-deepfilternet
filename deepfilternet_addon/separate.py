@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import time
 from array import array
 from pathlib import Path
@@ -75,11 +77,48 @@ def _child_env() -> dict | None:
     return env
 
 
+# Haiku's fork() fails with "Out of memory" once the model has run (it
+# reserves room to copy what it wrote), and its posix_spawn forks too as soon
+# as it has file actions to carry out; the encode comes after the model. So on
+# Haiku a shell is spawned with none, sets up ffmpeg's files itself and becomes
+# ffmpeg.
+HAIKU = sys.platform.startswith('haiku')
+_HAIKU_SCRIPT = 'err=$1; shift; exec "$@" </dev/null >/dev/null 2>"$err"'
+
+
+def _ffmpeg_haiku(command: list[str], cancel: Callable[[], bool]) -> tuple[int, str]:
+    """Run `command` to the end (Haiku): its exit code and what it wrote on stderr."""
+    with tempfile.TemporaryDirectory(prefix='ffmpeg-') as folder:
+        err = os.path.join(folder, 'errors.txt')
+        pid = os.posix_spawn('/bin/sh', ['sh', '-c', _HAIKU_SCRIPT, 'sh', err, *command], os.environ)
+        try:
+            while True:
+                done, status = os.waitpid(pid, os.WNOHANG)
+                if done:
+                    break
+                if cancel():
+                    raise engine.Cancelled()
+                time.sleep(0.1)
+        except BaseException:
+            os.kill(pid, signal.SIGKILL)
+            os.waitpid(pid, 0)
+            raise
+        errors = Path(err).read_text(encoding='utf-8', errors='replace').strip() if os.path.exists(err) else ''
+    return os.waitstatus_to_exitcode(status), errors
+
+
 def _ffmpeg(args: list[str], cancel: Callable[[], bool], what: str) -> None:
     """Run ffmpeg to the end, killing it on a cancel. Raises Failed with its last lines."""
     ffmpeg = find_ffmpeg()
     if not ffmpeg:
         raise Failed('ffmpeg was not found. Subtitld passes the one it uses; set FFMPEG_EXECUTABLE otherwise.')
+    if HAIKU:
+        command = [shutil.which(ffmpeg) or ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y', *args]
+        returncode, errors = _ffmpeg_haiku(command, cancel)
+        if returncode != 0:
+            tail = ' / '.join(errors.splitlines()[-3:]) or f'exit {returncode}'
+            raise Failed(f'{what}: {tail}')
+        return
     process = subprocess.Popen([ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y', *args],
                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                                env=_child_env(), startupinfo=_no_window_startupinfo())
