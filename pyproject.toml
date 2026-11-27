@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subtitld-addon-deepfilternet"
+version = "26.11.1"
+description = "Subtitld add-on: the voice of a video, cleaned of noise by DeepFilterNet"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Subtitld", email = "jbopen@gmail.com" }]
+requires-python = ">=3.10"
+
+# The model runs in audio.cpp, built by tools/build_native.py into
+# build/assets/ and loaded with ctypes; the sound is read and written by the
+# host's ffmpeg; the download uses the standard library. Nothing else is needed.
+dependencies = []
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.10"]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+deepfilternet-addon = "deepfilternet_addon.__main__:main"
+
+[tool.setuptools]
+packages = ["deepfilternet_addon"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["weights: needs the model's weights and audio.cpp (built by tools/build_native.py)"]

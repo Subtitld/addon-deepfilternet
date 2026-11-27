@@ -1,0 +1,48 @@
+{
+  "manifest_version": 1,
+  "id": "deepfilternet",
+  "version": "26.11.1",
+  "display_name": "DeepFilterNet (offline speech cleanup)",
+  "summary": "DeepFilterNet2 keeps the voice of a video and takes out background noise as the background, offline, on the CPU, in about a tenth of the time the video plays; cleaner than RNNoise. Small: the 9 MB model is in the add-on. Made for noise, not music: for a voice over music, use HTDemucs.",
+  "author": "Subtitld",
+  "homepage": "https://github.com/Subtitld/addon-deepfilternet",
+  "license": "Apache-2.0 (add-on, audio.cpp); MIT or Apache-2.0 (DeepFilterNet2 weights); MIT (ggml, cJSON, libyaml)",
+  "executable": "bin/deepfilternet-addon",
+  "protocol": 1,
+  "startup_timeout_sec": 30,
+  "platforms": [
+    "linux",
+    "macos",
+    "windows"
+  ],
+  "tasks": [
+    "audio.separate"
+  ],
+  "compute": "cpu",
+  "models": [
+    {
+      "id": "deepfilternet2",
+      "display_name": "DeepFilterNet2",
+      "size_mb": 9,
+      "license": "MIT OR Apache-2.0",
+      "bundled": true,
+      "default": true
+    }
+  ],
+  "disk_required_mb": 100,
+  "ram_required_mb": 512,
+  "config_schema": {
+    "fields": [
+      {
+        "key": "threads",
+        "type": "int",
+        "label": "CPU threads",
+        "default": 0,
+        "min": 0,
+        "max": 256,
+        "step": 1,
+        "help": "0 picks the performance cores on a CPU that also has efficiency cores, else one thread per core. Fewer leaves the computer more responsive while it separates."
+      }
+    ]
+  }
+}
